@@ -1,8 +1,11 @@
 package com.sameh.taskjava.ui.company;
 
+import static android.os.Looper.getMainLooper;
+
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,14 +21,26 @@ import androidx.navigation.Navigation;
 
 import com.gamify.space.Gamify;
 import com.gamify.space.GamifyError;
+import com.rad.RXError;
+import com.rad.RXSDK;
+import com.rad.out.RXAdInfo;
+import com.rad.out.RXSdkAd;
+import com.rad.out.ow.nativead.RXOWNativeAd;
+import com.rad.out.ow.nativead.RXOWNativeEventListener;
+import com.rad.ow.api.RXWallApi;
 import com.sameh.taskjava.R;
 import com.sameh.taskjava.data.Company;
 import com.sameh.taskjava.databinding.FragmentCompanyBinding;
+
+import java.util.List;
 
 public class CompanyFragment extends Fragment {
 
     private static final String OKSPIN_APP_KEY = "O6Z1x4LpMl6jKSmq1GJdMhZZB999Otk3";
     private static final String OKSPIN_PLACEMENT = "10882";
+
+    private static final String ROULAX_APP_ID = "261";
+    private static final String ROULAX_UNIT_ID = "495";
 
     private FragmentCompanyBinding binding;
 
@@ -61,6 +76,7 @@ public class CompanyFragment extends Fragment {
                 break;
 
             case Roulax:
+                initRXSDK();
                 break;
         }
     }
@@ -205,6 +221,69 @@ public class CompanyFragment extends Fragment {
             public void onUserInteraction(String placementId, String interaction) {
                 showLogD("onUserInteraction placementId" + placementId);
                 showLogD("onUserInteraction interaction" + interaction);
+            }
+        });
+    }
+
+    private void initRXSDK() {
+        RXSDK.INSTANCE.init(ROULAX_APP_ID, new RXSDK.RXSDKInitListener() {
+            @Override
+            public void onSDKInitSuccess() {
+                showLogD("onSDKInitSuccess");
+                loadRXOWNativeAd();
+            }
+
+            @Override
+            public void onSDKInitFailure(@NonNull RXError rxError) {
+                showLogD("onSDKInitFailure " + rxError);
+            }
+        });
+    }
+
+    private void loadRXOWNativeAd() {
+        RXSDK.INSTANCE.createRXSdkAd().loadOWNative(requireContext(), ROULAX_UNIT_ID, 1, new RXSdkAd.RXOWNativeAdListener() {
+            @Override
+            public void success(@NonNull RXAdInfo rxAdInfo, @NonNull List<? extends RXOWNativeAd> list) {
+                showLogD("native on load success");
+                if (list.size() > 0) {
+                    RXOWNativeAd ad = list.get(0);
+                    ad.setRXOWNativeListener(new RXOWNativeEventListener() {
+                        @Override
+                        public void onAdClick(@NonNull RXAdInfo rxAdInfo) {
+                            showLogD("native on ad click");
+                        }
+
+                        @Override
+                        public void onAdClose(@NonNull RXAdInfo rxAdInfo) {
+                            showLogD("native on close");
+                        }
+
+                        @Override
+                        public void onAdShow(@NonNull RXAdInfo rxAdInfo) {
+                            showLogD("native on show");
+                        }
+
+                        @Override
+                        public void onRenderFail(@NonNull RXAdInfo rxAdInfo, @NonNull RXError rxError) {
+                            showLogD("native on ad render fail " + rxError);
+                        }
+
+                        @Override
+                        public void onRenderSuccess(@NonNull View view) {
+                            showLogD("native on ad render success");
+                            binding.linearCompanyIcon.addView(view);
+                        }
+                    });
+                    ad.render();
+                }
+            }
+
+            @Override
+            public void failure(@NonNull RXAdInfo rxAdInfo, @NonNull List<RXError> list) {
+                showLogD("native on load fail");
+                for (RXError error : list) {
+                    showLogD("native on load fail: " + error);
+                }
             }
         });
     }
